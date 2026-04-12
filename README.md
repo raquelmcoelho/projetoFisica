@@ -1,4 +1,4 @@
-#  Simulação de Campos Magnéticos - Força de Lorentz
+#  Simulação de Campos Magnéticos e definição de B
 
 **Trabalho de Física - Tema: 28-1 Campos Magnéticos e a Definição de B**
 
