@@ -9,7 +9,7 @@ from ttkbootstrap.constants import *
 class SimuladorHallidayFinal:
     def __init__(self, root):
         self.root = root
-        self.root.title("Halliday & Resnick - Cap 28.1")
+        self.root.title("Halliday & Resnick - Cap 28.1: Definição de B")
         self.root.geometry("1500x900")
         self.style = ttk_bs.Style(theme="flatly")
         
@@ -32,7 +32,6 @@ class SimuladorHallidayFinal:
         col1.pack(side=LEFT, fill=Y, padx=10)
         
         ttk.Label(col1, text="CONTROLES", font=("Helvetica", 12, "bold")).pack(pady=10)
-        
         self._create_slider(col1, "Carga (q)", self.carga, -2.0, 2.0, "C")
         self._create_slider(col1, "Velocidade (v)", self.velocidade, 1.0, 15.0, "m/s")
         self._create_slider(col1, "Campo B (T)", self.campo_b, 0.5, 4.0, "T")
@@ -108,25 +107,25 @@ class SimuladorHallidayFinal:
         idx = 50 
         px, py = x_pos[idx], y_pos[idx]
         
-        # Velocidade (Derivada: vx = dx/dt, vy = dy/dt)
-        vx = v_perp * np.cos(w * t[idx])
-        vy = v_perp * np.sin(w * t[idx])
+        # Velocidade: Tangente à curva
+        vx = R * w * np.cos(w * t[idx])
+        vy = R * w * np.sin(w * t[idx])
         
-        # FORÇA CENTRÍPETA (Sempre aponta para o centro da curva)
-        # O centro instantâneo para esta parametrização está em (0, R)
-        fx = -px 
-        fy = (R - py)
-        # Normalizando a seta para o desenho não ficar gigante
-        f_mag = np.sqrt(fx**2 + fy**2)
-        fx_alt, fy_alt = (fx/f_mag)*5, (fy/f_mag)*5
+        # FORÇA: Vetor que aponta da partícula (px, py) para o centro do círculo (0, R)
+        fx_dir = 0 - px
+        fy_dir = R - py
+        
+        # Escalonamos para visibilidade
+        norm = np.sqrt(fx_dir**2 + fy_dir**2)
+        fx, fy = (fx_dir/norm)*5, (fy_dir/norm)*5
 
         self.ax_xy.quiver(px, py, vx, vy, color='green', scale=35, label='v')
-        self.ax_xy.quiver(px, py, fx_alt, fy_alt, color='red', scale=35, label='Fb')
+        self.ax_xy.quiver(px, py, fx, fy, color='red', scale=35, label='Fb')
         self.ax_xy.plot(px, py, 'bo', markersize=10) 
         
         self.ax_xy.set_xlim(-15, 15); self.ax_xy.set_ylim(-5, 25)
         self.ax_xy.set_xlabel("X (m)"); self.ax_xy.set_ylabel("Y (m)")
-        self.ax_xy.grid(True, linestyle=':', alpha=0.6); self.ax_xy.set_aspect('equal')
+        self.ax_xy.grid(True, linestyle=':', alpha=0.6); self.ax_xy.set_aspect('equal'); 
 
         # --- PLANO YZ ---
         for j in np.linspace(-5, 25, 5):
