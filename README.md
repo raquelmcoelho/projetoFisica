@@ -1,167 +1,79 @@
-#  Simulação de Campos Magnéticos e definição de B
+# Simulação de Campos Magnéticos e Definição de B (Cap. 28-1)
 
-**Trabalho de Física - Tema: 28-1 Campos Magnéticos e a Definição de B**
+**Trabalho de Física - Eletromagnetismo** **Baseado no livro:** *Halliday, Resnick & Walker - 10ª Edição*
 
-##  Objetivo
-
-Simular o comportamento de uma **partícula carregada** movendo-se em um **campo magnético uniforme**, demonstrando a **Força de Lorentz** através de uma interface interativa e dinâmica.
-
----
-
-##  O Que É Simulado
-
-### Força de Lorentz
-A força magnética que atua sobre uma partícula carregada em movimento é dada por:
-
-```
-F = q(v × B)
-```
-
-Onde:
-- **q** = carga da partícula (Coulombs)
-- **v** = velocidade da partícula (m/s)
-- **B** = campo magnético (Tesla)
-- **×** = produto vetorial
-
-Quando uma partícula carregada entra em um campo magnético perpendicular à sua velocidade, ela sofre uma **trajetória circular**.
-
-### Parâmetros Calculados Automaticamente
-
-1. **Raio de Curvatura (r)**
-   ```
-   r = (m × v) / (q × B)
-   ```
-   Quanto maior o raio, mais "aberta" é a trajetória.
-
-2. **Frequência de Larmor (ω)**
-   ```
-   ω = q × B / m
-   ```
-   Frequência angular do movimento circular.
-
-3. **Período (T)**
-   ```
-   T = 2π / ω
-   ```
-   Tempo para completar uma volta.
+## Objetivo
+Este software simula a interação entre uma partícula carregada e um **campo magnético uniforme**. O objetivo é demonstrar visualmente como a **Força de Lorentz** atua como uma força centrípeta, criando trajetórias circulares ou helicoidais (em hélice).
 
 ---
 
+## O Que é Simulado?
 
-### Instalação de Dependências
+Diferente de um campo elétrico, o campo magnético só exerce força em cargas que possuem **velocidade**. O simulador utiliza a decomposição do movimento em duas perspectivas para facilitar o entendimento:
 
+1.  **Vista de Cima (Plano XY):** Foca no movimento de rotação (giro).
+2.  **Vista Lateral (Plano YZ):** Revela o avanço da partícula, mostrando a formação da hélice.
+
+### A Força de Lorentz
+A base matemática do projeto é:
+```math
+\vec{F}_B = q(\vec{v} \times \vec{B})
+```
+
+Onde a força resultante ($\vec{F}_B$) é sempre perpendicular à velocidade ($\vec{v}$) e ao campo ($\vec{B}$).
+
+---
+
+## Como as Variáveis Influenciam o Gráfico?
+
+Para entender o comportamento da partícula, observe como cada slider altera a física do sistema:
+
+### 1. Carga ($q$)
+* **Influência no Raio:** Quanto maior a carga, **menor** o raio (o giro fica mais "apertado").
+* **Influência no Sentido:** Se a carga for **positiva** (Próton), ela gira para um lado. Se for **negativa** (Elétron), o sentido de giro inverte instantaneamente.
+* **Fórmula:** $R \propto 1/q$
+
+### 2. Velocidade ($v$) e Ângulo ($\phi$)
+* **Influência no Raio:** Aumentar a velocidade torna o raio **maior**, pois a partícula ganha mais inércia para "fugir" da curva.
+* **Ângulo de Entrada ($\phi$):** É o ângulo entre a velocidade e o campo.
+    * Em **90°**: O movimento é um círculo perfeito (toda a velocidade é usada para girar).
+    * Menor que **90°**: Surge a hélice. Uma parte da velocidade faz girar e a outra faz a partícula avançar.
+* **Fórmula:** $R = \frac{m \cdot v \cdot \sin(\phi)}{q \cdot B}$
+
+### 3. Campo Magnético ($B$)
+* **Influência no Raio:** Quanto mais forte o campo, **menor** o raio. O campo magnético "obriga" a partícula a curvar com mais força.
+* **No Gráfico:** Representado pelo símbolo $\otimes$ (entrando na tela) no plano XY.
+* **Fórmula:** $R \propto 1/B$
+
+---
+
+## Interface e Legendas
+
+A aplicação é dividida em 3 colunas estratégicas:
+
+* **Coluna 1 (Cálculos):** Mostra a substituição dos valores reais na fórmula do Halliday. Útil para provar que a teoria bate com o desenho.
+* **Coluna 2 (Plano XY):**
+    * **Seta Verde:** Vetor Velocidade ($\vec{v}$).
+    * **Seta Vermelha:** Vetor Força Magnética ($\vec{F}_B$). Note que ela aponta sempre para o **centro do círculo**.
+* **Coluna 3 (Plano YZ):** Mostra a inclinação da entrada ($\phi$) e como a hélice se estica conforme o ângulo diminui.
+
+---
+
+## Instalação e Execução
+
+### Dependências
+Certifique-se de ter o Python instalado e as seguintes bibliotecas:
 ```bash
-pip install -r requirements.txt
+pip install numpy matplotlib ttkbootstrap
 ```
 
-### Executar a Simulação
-
+### Como rodar
 ```bash
 python main.py
 ```
 
-### Interface
-
-A aplicação possui **dois painéis principais**:
-
-#### Painel de Controles (Esquerda)
-- **Sliders dinâmicos** para ajustar cada parâmetro
-- Valores são **atualizados em tempo real** no gráfico
-- **Informações calculadas** mostram raio, frequência e período
-
-#### Painel de Visualização (Direita)
-- **Gráfico interativo** da trajetória da partícula
-- Ponto verde: posição inicial
-- Estrela vermelha: posição final
-- Pontos amarelos: representação do campo magnético
-
----
-
-## Parâmetros Ajustáveis
-
-| Parâmetro | Valor Padrão | Significado |
-|-----------|-------------|-----------|
-| **Carga (q)** | 1.6×10⁻¹⁹ C | Carga de um elétron |
-| **Massa (m)** | 9.1×10⁻³¹ kg | Massa de um elétron |
-| **Velocidade (v)** | 1×10⁶ m/s | Velocidade inicial da partícula |
-| **Campo Magnético (B)** | 0.1 T | Intensidade do campo magnético |
-| **Ângulo de Entrada** | 90° | Ângulo da velocidade inicial |
-| **Tempo de Simulação** | 1×10⁻⁸ s | Duração da simulação |
-
----
-
-## Exemplos de Uso
-
-### Exemplo 1: Aumentar o Campo Magnético
-- **Efeito**: Raio da órbita **diminui** (trajetória mais apertada)
-- **Por quê**: r = mv / (qB) - quanto maior B, menor r
-
-### Exemplo 2: Aumentar a Velocidade
-- **Efeito**: Raio da órbita **aumenta**
-- **Por quê**: r = mv / (qB) - quanto maior v, maior r
-
-### Exemplo 3: Mudar o Ângulo de Entrada
-- **Efeito**: Forma da trajetória muda
-- **90°**: Movimento circular perfeito
-- **0° ou 180°**: Sem deflexão (movimento reto)
-
----
-
-## Física Envolvida
-
-### O Que É Um Campo Magnético?
-
-Um **campo magnético** é uma grandeza vetorial que exerce força em partículas carregadas em movimento. Representado por:
-- **B** = intensidade (Tesla)
-- **Direção** = perpendicular ao plano de simulação
-
-### A Força Magnética
-
-Diferente da força elétrica, a **força magnética**:
--  Age perpendicularmente à velocidade
--  Não realiza trabalho (energia cinética constante)
--  Causa mudança na **direção**, não na **velocidade**
--  Atua apenas em partículas em movimento
-
-### Trajetória Circular
-
-A força magnética atua como **força centrípeta**:
-```
-qvB = mv² / r
-
-r = mv / (qB)
-```
-
-Portanto, a partícula se move em um **círculo** com velocidade constante.
-
----
-
-
-- **Tema**: Dark Mode (TkBootstrap - Darkly)
-- **Cores**:
-  - 🟦 Cyan: Trajetória e valores de controle
-  - 🟢 Verde: Informações calculadas
-  - 🟥 Vermelho: Posição final
-  - 🟨 Amarelo: Campo magnético
-
----
-
-## Possíveis Extensões
-
-1. **Adicionar campo elétrico** (combinação E e B)
-2. **Múltiplas partículas** com cargas diferentes
-3. **Campo magnético não-uniforme**
-4. **Gráficos adicionais** (velocidade vs tempo, energia)
-5. **Exportar dados** para análise
-
 ---
 
 ## Referências
-
-- Halliday, Resnick & Walker - Fundamentos de Física
-- Griffiths - Introduction to Electrodynamics
-- Khan Academy - Magnetic Force on Moving Charges
-
----
-
-**Desenvolvido com Python + Tkinter + Matplotlib**
+* **Halliday, D., Resnick, R., Walker, J.** *Fundamentos de Física*, Vol. 3 (Eletromagnetismo).
+* **Tópico:** 28-1 O que é um Campo Magnético e sua Definição.
