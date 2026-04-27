@@ -3,271 +3,161 @@ from tkinter import ttk
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.animation import FuncAnimation
 import ttkbootstrap as ttk_bs
 from ttkbootstrap.constants import *
 
-class SimuladorCampoMagnetico:
+class SimuladorHallidayDefinitivo:
     def __init__(self, root):
         self.root = root
-        self.root.title("Simulação de Campos Magnéticos - Força de Lorentz")
-        self.root.geometry("1400x800")
+        self.root.title("Halliday & Resnick - Cap 28.1: Análise Bi-Planar")
+        self.root.geometry("1550x850")
         
-        # Configuração de cores (tema dark bootstrap)
-        style = ttk_bs.Style(theme="darkly")
+        self.style = ttk_bs.Style(theme="flatly")
         
-        # Variáveis de controle
-        self.carga = tk.DoubleVar(value=1.6e-19)  # Carga do elétron (C)
-        self.massa = tk.DoubleVar(value=9.1e-31)   # Massa do elétron (kg)
-        self.velocidade = tk.DoubleVar(value=1e6)  # Velocidade (m/s)
-        self.campo_b = tk.DoubleVar(value=0.1)     # Campo magnético (T)
-        self.angulo = tk.DoubleVar(value=90)       # Ângulo de entrada (graus)
-        self.tempo_sim = tk.DoubleVar(value=1e-8)  # Tempo de simulação (s)
+        # Variáveis
+        self.carga = tk.DoubleVar(value=1.0)
+        self.velocidade = tk.DoubleVar(value=6.0)
+        self.campo_b = tk.DoubleVar(value=1.2)
+        self.angulo = tk.DoubleVar(value=45)
+        self.massa = 1.0 # Fixa para simplificar a escala visual
         
-        self.animando = False
-        self.trajetoria_x = []
-        self.trajetoria_y = []
+        self._setup_ui()
+        self._atualizar()
+
+    def _setup_ui(self):
+        main_frame = ttk.Frame(self.root, padding=10)
+        main_frame.pack(fill=BOTH, expand=True)
         
-        self._criar_layout()
-        self._criar_grafico()
+        # --- COLUNA 1: CONTROLES E MATEMÁTICA ---
+        col1 = ttk.Frame(main_frame, width=380)
+        col1.pack(side=LEFT, fill=Y, padx=10)
         
-    def _criar_layout(self):
-        """Cria o layout principal da aplicação"""
+        ttk.Label(col1, text="PARÂMETROS DE ENTRADA", font=("Helvetica", 11, "bold")).pack(pady=10)
         
-        # Container principal
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
+        self.lbl_q = self._create_slider(col1, "Carga (q)", self.carga, -2.0, 2.0)
+        self.lbl_v = self._create_slider(col1, "Velocidade (v)", self.velocidade, 1.0, 10.0)
+        self.lbl_b = self._create_slider(col1, "Campo B (T)", self.campo_b, 0.5, 3.0)
+        self.lbl_phi = self._create_slider(col1, "Ângulo φ (°)", self.angulo, 1, 89)
+
+        # Painel de Fórmulas
+        self.info_box = ttk.LabelFrame(col1, text=" DEMONSTRAÇÃO MATEMÁTICA ", padding=15)
+        self.info_box.pack(fill=X, pady=20)
         
-        # ========== PAINEL DE CONTROLES (Esquerda) ==========
-        controle_frame = ttk.LabelFrame(main_frame, text="⚙️ PARÂMETROS DE SIMULAÇÃO", padding=15)
-        controle_frame.pack(side=LEFT, fill=BOTH, padx=(0, 10), pady=10)
+        self.lbl_calc = ttk.Label(self.info_box, text="", font=("Consolas", 10), justify=LEFT)
+        self.lbl_calc.pack()
+
+        # --- COLUNA 2: PLANO XY ---
+        col2 = ttk.LabelFrame(main_frame, text=" VISTA DE CIMA (Plano XY) ")
+        col2.pack(side=LEFT, fill=BOTH, expand=True, padx=5)
+        self.fig_xy, self.ax_xy = plt.subplots(figsize=(5, 5))
+        self.canvas_xy = FigureCanvasTkAgg(self.fig_xy, master=col2)
+        self.canvas_xy.get_tk_widget().pack(fill=BOTH, expand=True)
+
+        # --- COLUNA 3: PLANO YZ ---
+        col3 = ttk.LabelFrame(main_frame, text=" VISTA LATERAL (Plano YZ) ")
+        col3.pack(side=LEFT, fill=BOTH, expand=True, padx=5)
+        self.fig_yz, self.ax_yz = plt.subplots(figsize=(5, 5))
+        self.canvas_yz = FigureCanvasTkAgg(self.fig_yz, master=col3)
+        self.canvas_yz.get_tk_widget().pack(fill=BOTH, expand=True)
+
+    def _create_slider(self, parent, label, var, v_min, v_max):
+        frame = ttk.Frame(parent)
+        frame.pack(fill=X, pady=5)
         
-        # Carga da Partícula
-        ttk.Label(controle_frame, text="Carga (C):", font=("Helvetica", 10, "bold")).pack(anchor=W, pady=(10, 5))
-        carga_scale = ttk.Scale(controle_frame, from_=1e-20, to=1e-18, variable=self.carga, 
-                               orient=HORIZONTAL, command=lambda x: self._atualizar_grafico())
-        carga_scale.pack(fill=X, pady=(0, 5))
-        self.carga_label = ttk.Label(controle_frame, text=f"1.6e-19 C", foreground="cyan")
-        self.carga_label.pack(anchor=W, pady=(0, 10))
-        self.carga.trace("w", self._atualizar_labels)
+        header = ttk.Frame(frame)
+        header.pack(fill=X)
+        ttk.Label(header, text=label).pack(side=LEFT)
+        val_lbl = ttk.Label(header, text=f"{var.get():.2f}", font=("Helvetica", 9, "bold"), foreground="#2c3e50")
+        val_lbl.pack(side=RIGHT)
+
+        def update_val(val):
+            val_lbl.config(text=f"{float(val):.2f}")
+            self._atualizar()
+
+        scale = ttk.Scale(frame, from_=v_min, to=v_max, variable=var, command=update_val)
+        scale.pack(fill=X)
+        return val_lbl
+
+    def _atualizar(self):
+        self.ax_xy.clear()
+        self.ax_yz.clear()
         
-        # Massa da Partícula
-        ttk.Label(controle_frame, text="Massa (kg):", font=("Helvetica", 10, "bold")).pack(anchor=W, pady=(10, 5))
-        massa_scale = ttk.Scale(controle_frame, from_=1e-31, to=1e-29, variable=self.massa, 
-                               orient=HORIZONTAL, command=lambda x: self._atualizar_grafico())
-        massa_scale.pack(fill=X, pady=(0, 5))
-        self.massa_label = ttk.Label(controle_frame, text=f"9.1e-31 kg", foreground="cyan")
-        self.massa_label.pack(anchor=W, pady=(0, 10))
-        self.massa.trace("w", self._atualizar_labels)
-        
-        # Velocidade Inicial
-        ttk.Label(controle_frame, text="Velocidade (m/s):", font=("Helvetica", 10, "bold")).pack(anchor=W, pady=(10, 5))
-        vel_scale = ttk.Scale(controle_frame, from_=1e5, to=1e7, variable=self.velocidade, 
-                             orient=HORIZONTAL, command=lambda x: self._atualizar_grafico())
-        vel_scale.pack(fill=X, pady=(0, 5))
-        self.vel_label = ttk.Label(controle_frame, text=f"1.0e+06 m/s", foreground="cyan")
-        self.vel_label.pack(anchor=W, pady=(0, 10))
-        self.velocidade.trace("w", self._atualizar_labels)
-        
-        # Campo Magnético
-        ttk.Label(controle_frame, text="Campo Magnético B (T):", font=("Helvetica", 10, "bold")).pack(anchor=W, pady=(10, 5))
-        campo_scale = ttk.Scale(controle_frame, from_=0.01, to=1.0, variable=self.campo_b, 
-                               orient=HORIZONTAL, command=lambda x: self._atualizar_grafico())
-        campo_scale.pack(fill=X, pady=(0, 5))
-        self.campo_label = ttk.Label(controle_frame, text=f"0.1 T", foreground="cyan")
-        self.campo_label.pack(anchor=W, pady=(0, 10))
-        self.campo_b.trace("w", self._atualizar_labels)
-        
-        # Ângulo de Entrada
-        ttk.Label(controle_frame, text="Ângulo de Entrada (°):", font=("Helvetica", 10, "bold")).pack(anchor=W, pady=(10, 5))
-        angulo_scale = ttk.Scale(controle_frame, from_=0, to=180, variable=self.angulo, 
-                                orient=HORIZONTAL, command=lambda x: self._atualizar_grafico())
-        angulo_scale.pack(fill=X, pady=(0, 5))
-        self.angulo_label = ttk.Label(controle_frame, text=f"90°", foreground="cyan")
-        self.angulo_label.pack(anchor=W, pady=(0, 10))
-        self.angulo.trace("w", self._atualizar_labels)
-        
-        # Tempo de Simulação
-        ttk.Label(controle_frame, text="Tempo de Simulação (s):", font=("Helvetica", 10, "bold")).pack(anchor=W, pady=(10, 5))
-        tempo_scale = ttk.Scale(controle_frame, from_=1e-9, to=1e-7, variable=self.tempo_sim, 
-                               orient=HORIZONTAL, command=lambda x: self._atualizar_grafico())
-        tempo_scale.pack(fill=X, pady=(0, 5))
-        self.tempo_label = ttk.Label(controle_frame, text=f"1.0e-08 s", foreground="cyan")
-        self.tempo_label.pack(anchor=W, pady=(0, 10))
-        self.tempo_sim.trace("w", self._atualizar_labels)
-        
-        # Separador
-        ttk.Separator(controle_frame, orient=HORIZONTAL).pack(fill=X, pady=15)
-        
-        # Botão Resetar
-        ttk.Button(controle_frame, text="🔄 Resetar Simulação", 
-                  command=self._resetar).pack(fill=X, pady=5)
-        
-        # ========== PAINEL DE INFORMAÇÕES ==========
-        info_frame = ttk.LabelFrame(controle_frame, text="📊 INFORMAÇÕES CALCULADAS", padding=10)
-        info_frame.pack(fill=X, pady=15)
-        
-        self.raio_label = ttk.Label(info_frame, text="Raio da órbita: -", foreground="lime")
-        self.raio_label.pack(anchor=W, pady=3)
-        
-        self.freq_label = ttk.Label(info_frame, text="Frequência de Larmor: -", foreground="lime")
-        self.freq_label.pack(anchor=W, pady=3)
-        
-        self.periodo_label = ttk.Label(info_frame, text="Período: -", foreground="lime")
-        self.periodo_label.pack(anchor=W, pady=3)
-        
-        # ========== PAINEL DO GRÁFICO (Direita) ==========
-        grafico_frame = ttk.LabelFrame(main_frame, text="📈 VISUALIZAÇÃO DA TRAJETÓRIA", padding=10)
-        grafico_frame.pack(side=RIGHT, fill=BOTH, expand=True)
-        
-        self.canvas_frame = grafico_frame
-        
-    def _criar_grafico(self):
-        """Cria o gráfico matplotlib"""
-        self.fig, self.ax = plt.subplots(figsize=(8, 8), dpi=100, facecolor='#1e1e1e')
-        self.ax.set_facecolor('#2d2d2d')
-        
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.canvas_frame)
-        self.canvas.get_tk_widget().pack(fill=BOTH, expand=True)
-        
-        self._atualizar_grafico()
-        
-    def _atualizar_labels(self, *args):
-        """Atualiza os rótulos de valores"""
-        self.carga_label.config(text=f"{self.carga.get():.2e} C")
-        self.massa_label.config(text=f"{self.massa.get():.2e} kg")
-        self.vel_label.config(text=f"{self.velocidade.get():.2e} m/s")
-        self.campo_label.config(text=f"{self.campo_b.get():.2f} T")
-        self.angulo_label.config(text=f"{self.angulo.get():.0f}°")
-        self.tempo_label.config(text=f"{self.tempo_sim.get():.2e} s")
-        
-    def _calcular_trajetoria(self):
-        """Calcula a trajetória da partícula em um campo magnético"""
         q = self.carga.get()
-        m = self.massa.get()
         v = self.velocidade.get()
-        B = self.campo_b.get()
-        angulo_rad = np.radians(self.angulo.get())
-        t_max = self.tempo_sim.get()
+        B_val = self.campo_b.get()
+        phi_deg = self.angulo.get()
+        phi = np.radians(phi_deg)
+        m = self.massa
         
-        # Componentes de velocidade
-        vx = v * np.cos(angulo_rad)
-        vy = v * np.sin(angulo_rad)
+        v_z = v * np.cos(phi)
+        v_perp = v * np.sin(phi)
         
-        # Raio de curvatura (r = mv / qB)
-        if B > 0 and q > 0:
-            raio = (m * v) / (q * B)
-        else:
-            raio = 1.0
+        if abs(q) < 0.01: q = 0.01 # Evitar erro
+        omega = (q * B_val) / m
+        R = v_perp / (abs(q) * B_val)
         
-        # Frequência ciclotron (ω = qB/m)
-        omega = (q * B) / m if m > 0 else 1.0
+        t = np.linspace(0, 12, 600)
+        x = R * np.sin(omega * t)
+        y = R * (1 - np.cos(omega * t))
+        z = v_z * t
+
+        # --- PLANO XY (Vista de Cima) ---
+        # Desenhar B (entrando)
+        for i in np.linspace(-10, 10, 6):
+            for j in np.linspace(-10, 10, 6):
+                self.ax_xy.text(i, j, '⊗', color='blue', alpha=0.15, ha='center', va='center')
         
-        # Período (T = 2π/ω)
-        periodo = (2 * np.pi) / omega if omega > 0 else 1.0
+        self.ax_xy.plot(x, y, color='black', lw=1, alpha=0.5, ls='--')
+        # Posição atual da partícula (ponto t=0.5 para ver os vetores)
+        idx = 50 
+        px, py = x[idx], y[idx]
+        self.ax_xy.plot(px, py, 'ro', markersize=8, label='Carga')
         
-        # Número de passos
-        n_passos = 1000
-        dt = t_max / n_passos
+        # Vetores v e F no plano XY
+        vx_inst = v_perp * np.cos(omega * t[idx])
+        vy_inst = v_perp * np.sin(omega * t[idx])
+        # Fb = q(v x B). B é (0,0,-B). v x B = (-vyB, vxB, 0)
+        fx = q * (vy_inst * B_val)
+        fy = q * (-vx_inst * B_val)
         
-        # Arrays para armazenar a trajetória
-        x = np.zeros(n_passos)
-        y = np.zeros(n_passos)
+        self.ax_xy.quiver(px, py, vx_inst, vy_inst, color='green', scale=40, label='v')
+        self.ax_xy.quiver(px, py, fx, fy, color='red', scale=40, label='Fb')
         
-        # Integração numérica (método de Euler)
-        vx_current = vx
-        vy_current = vy
-        
-        for i in range(n_passos - 1):
-            # Força de Lorentz: F = q(v × B)
-            # Campo B está na direção z (perpendicular ao plano xy)
-            ax = (q / m) * vy_current * B
-            ay = -(q / m) * vx_current * B
+        self.ax_xy.set_xlim(-10, 10); self.ax_xy.set_ylim(-10, 10)
+        self.ax_xy.set_xlabel("X"); self.ax_xy.set_ylabel("Y")
+        self.ax_xy.set_title("Giro em XY (B entrando)")
+
+        # --- PLANO YZ (Vista Lateral) ---
+        # Desenhar B (setas para direita/Z)
+        for j in np.linspace(-10, 10, 5):
+            self.ax_yz.quiver(0, j, 15, 0, color='blue', alpha=0.1, width=0.005)
             
-            # Atualiza velocidade
-            vx_current += ax * dt
-            vy_current += ay * dt
-            
-            # Atualiza posição
-            x[i + 1] = x[i] + vx_current * dt
-            y[i + 1] = y[i] + vy_current * dt
-        
-        return x, y, raio, omega, periodo
-    
-    def _atualizar_grafico(self):
-        """Atualiza o gráfico com a trajetória calculada"""
-        self.ax.clear()
-        
-        x, y, raio, omega, periodo = self._calcular_trajetoria()
-        
-        # Plotar trajetória
-        self.ax.plot(x * 1e10, y * 1e10, 'c-', linewidth=2, label='Trajetória da partícula')
-        self.ax.plot(x[0] * 1e10, y[0] * 1e10, 'go', markersize=10, label='Início')
-        self.ax.plot(x[-1] * 1e10, y[-1] * 1e10, 'r*', markersize=15, label='Fim')
-        
-        # Campo magnético (representado por símbolos)
-        self._desenhar_campo_magnetico()
-        
-        # Configurações do gráfico
-        self.ax.set_xlabel('X (Å)', color='white', fontsize=10)
-        self.ax.set_ylabel('Y (Å)', color='white', fontsize=10)
-        self.ax.set_title('Trajetória da Partícula Carregada em Campo Magnético', 
-                         color='white', fontsize=12, fontweight='bold')
-        self.ax.grid(True, alpha=0.2, color='white')
-        self.ax.legend(loc='upper right', facecolor='#2d2d2d', edgecolor='white', labelcolor='white')
-        
-        # Cores dos eixos
-        self.ax.spines['bottom'].set_color('white')
-        self.ax.spines['left'].set_color('white')
-        self.ax.spines['top'].set_visible(False)
-        self.ax.spines['right'].set_visible(False)
-        self.ax.tick_params(colors='white')
-        
-        # Atualizar informações calculadas
-        self.raio_label.config(text=f"Raio da órbita: {self._converter_unidade(raio)} m")
-        self.freq_label.config(text=f"Frequência de Larmor: {self._converter_unidade(omega)} rad/s")
-        self.periodo_label.config(text=f"Período: {self._converter_unidade(periodo)} s")
-        
-        self.canvas.draw()
-        
-    def _desenhar_campo_magnetico(self):
-        """Desenha representação do campo magnético"""
-        # Campo magnético perpendicular à página (saindo = ●, entrando = ⊗)
-        ax_lim = self.ax.get_xlim()
-        ay_lim = self.ax.get_ylim()
-        
-        # Padrão de pontos/cruzes para representar campo B
-        y_pos = np.linspace(ay_lim[0], ay_lim[1], 8)
-        x_pos = np.linspace(ax_lim[0], ax_lim[1], 8)
-        
-        for x in x_pos:
-            for y in y_pos:
-                self.ax.plot(x, y, 'y.', markersize=3, alpha=0.3)
-    
-    def _converter_unidade(self, valor):
-        """Converte valor para unidade apropriada com notação científica"""
-        if abs(valor) < 1e-6:
-            return f"{valor:.2e}"
-        elif abs(valor) < 1e-3:
-            return f"{valor:.2e}"
-        else:
-            return f"{valor:.2e}"
-    
-    def _resetar(self):
-        """Reseta os valores aos padrões"""
-        self.carga.set(1.6e-19)
-        self.massa.set(9.1e-31)
-        self.velocidade.set(1e6)
-        self.campo_b.set(0.1)
-        self.angulo.set(90)
-        self.tempo_sim.set(1e-8)
+        self.ax_yz.plot(z, y, color='cyan', lw=2)
+        self.ax_yz.plot(z[idx], y[idx], 'ro')
+        self.ax_yz.set_xlim(0, 20); self.ax_yz.set_ylim(-10, 10)
+        self.ax_yz.set_xlabel("Z (Direção de B)"); self.ax_yz.set_ylabel("Y")
+        self.ax_yz.set_title("Avanço em YZ (Hélice)")
 
+        # --- PAINEL MATEMÁTICO ---
+        txt = (
+            f"1. FORÇA MAGNÉTICA:\n"
+            f"Fb = q * (v_perp * B)\n"
+            f"Fb = {abs(q):.1f} * ({v_perp:.1f} * {B_val:.1f})\n"
+            f"Fb = {abs(q*v_perp*B_val):.2f} N\n\n"
+            f"2. RAIO DA CURVATURA:\n"
+            f"R = (m * v_perp) / (|q| * B)\n"
+            f"R = ({m} * {v_perp:.2f}) / ({abs(q):.1f} * {B_val:.1f})\n"
+            f"R = {abs(R):.2f} m\n\n"
+            f"3. COMPONENTES VETORIAIS:\n"
+            f"B = {B_val:.1f} k (T)\n"
+            f"v_z (avanço) = {v_z:.2f} k (m/s)"
+        )
+        self.lbl_calc.config(text=txt)
 
-def main():
-    root = ttk_bs.Window(themename="darkly")
-    app = SimuladorCampoMagnetico(root)
-    root.mainloop()
-
+        self.canvas_xy.draw()
+        self.canvas_yz.draw()
 
 if __name__ == "__main__":
-    main()
+    root = ttk_bs.Window(themename="flatly")
+    app = SimuladorHallidayDefinitivo(root)
+    root.mainloop()
